@@ -1,6 +1,10 @@
 from typing import Union
 
 from fastapi import FastAPI
+<<<<<<< HEAD
+=======
+from router.user_route import user
+>>>>>>> 8461ead (Cambios estructura router User)
 
 app = FastAPI()
 
