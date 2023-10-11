@@ -1,11 +1,14 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import requests
 from models.user import User
 from models.respond_user import RespondUser
 import firebase_admin
+from firebase_admin import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
+from dto.dto_user import DtoUser
 
 user =  APIRouter()
 
@@ -31,7 +34,14 @@ async def get_users(db: firestore.Client = Depends(get_db)):
     for doc in docs:
         user = doc.to_dict()
         user["id"] = doc.id
-        users.append(user)
+
+        # Convert the user to a DtoUser object.
+        dto_user = DtoUser(**user)
+
+        users.append(dto_user)
+
+    if not users:
+        return RespondUser(success=False, data=[{"message": "No users found"}])
 
     return RespondUser(success=True, data=users)
 
@@ -50,16 +60,26 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     user = doc.to_dict()
     user["id"] = doc.id
 
-    return RespondUser(success=True, data=[user])
+    # Convert the user to a DtoUser object.
+    dto_user = DtoUser(**user)
+
+    return RespondUser(success=True, data=[dto_user])
 
 #----------------------------------------------------------------
 
 #Metodos Post User
 @user.post("/api/users")
-async def create_user(user: User, db: firestore.Client = Depends(get_db)):
-    data = user.model_dump()
-    doc_ref = db.collection("users").add(data)
-    return {"message": "The user has been post succesfully "}
+async def create_user(
+    user: User,
+    db: firestore.Client = Depends(get_db),
+):
+    user.id = str(uuid.uuid4())
+
+    try:
+        doc_ref = db.collection("users").document(user.id).set(user.model_dump())
+        return RespondUser(success=True, data=["The user has been created successfully"])
+    except Exception as e:
+        return RespondUser(success=False, data=str(e))
 
 #----------------------------------------------------------------
 
@@ -86,7 +106,14 @@ def update_user(user_id: str, updatedUser: User, db: firestore.Client = Depends(
 @user.delete("/api/users/{user_id}")
 async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
-    doc_ref.delete()
-    return {"message": "User has been deleted successfully"}
 
+    # Check if the document exists.
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    doc_ref.delete()
+
+    # Devolver la respuesta
+    return RespondUser(success=True, data=[user_id])
 #----------------------------------------------------------------
