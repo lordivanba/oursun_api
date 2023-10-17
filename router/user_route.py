@@ -1,14 +1,16 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-import requests
+#----------------------------------------------------------------
+from dto.request_dto import RequestUserDto
+from dto.dto_user import DtoUser
+#----------------------------------------------------------------
 from models.user import User
 from models.respond_user import RespondUser
+#----------------------------------------------------------------
 import firebase_admin
 from firebase_admin import firestore
 from firebase_admin import credentials
-from firebase_admin import firestore
-from dto.dto_user import DtoUser
+#----------------------------------------------------------------
 
 user =  APIRouter()
 
@@ -70,10 +72,17 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 #Metodos Post User
 @user.post("/api/users")
 async def create_user(
-    user: User,
+    request: RequestUserDto,
     db: firestore.Client = Depends(get_db),
 ):
-    user.id = str(uuid.uuid4())
+    user = User(
+        id= str(uuid.uuid4()),
+        origin=request.origin,
+        type=request.type,
+        username=request.username,
+        email=request.email,
+        user_password=request.user_password,
+    )
 
     try:
         doc_ref = db.collection("users").document(user.id).set(user.model_dump())

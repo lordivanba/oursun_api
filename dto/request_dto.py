@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class DtoUser(BaseModel):
-    id: str
+class RequestUserDto(BaseModel):
     origin : int
     type: int
-    username: str
-    email: str
+    username : str
+    email : str
+    user_password: str
