@@ -1,40 +1,15 @@
 from typing import Union
 
 from fastapi import FastAPI
-from router.user_route import user
+from router import user
+
+from router import kits
 
 app = FastAPI()
 
+@app.router.get("/", tags="/")
+def read():
+    return {"hello": "world"}
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
-@app.get("/bambam")
-def bambam():
-    return {
-        "success": True,
-        "data": [
-            {
-                "user": "bambam",
-                "email": "hello@bambamcodes.com",
-                "createdAt": "29/09/2023",
-            }
-        ],
-        "pagination": {
-            "page": 1,
-            "total": 1,
-        },
-    }
-
-
-@app.get("/items/{item_id}")
-def read_item(
-    item_id: int,
-    q: Union[str, None] = None,
-):
-    return {
-        "item_id": item_id,
-        "q": q,
-    }
+app.include_router(kits.router,prefix="/kits", tags=["kits"])
+app.include_router(user.user, prefix="/users", tags=["users"])
