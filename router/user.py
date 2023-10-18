@@ -1,5 +1,6 @@
-import uuid
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Union
+import uuid
 #----------------------------------------------------------------
 from dto.requestUpdateUserDto import RequestUpdateUserDto
 from dto.requestUserDto import RequestUserDto
@@ -15,7 +16,10 @@ from firebase_admin import firestore
 from firebase_admin import credentials
 #----------------------------------------------------------------
 
+#----------------------------------------------------------------
+
 user =  APIRouter()
+
 
 #----------------------------------------------------------------
 
@@ -29,13 +33,21 @@ def get_db():
     return db
 
 #----------------------------------------------------------------
-#Métod de obtención de Token mediante JWT
+#Método de obtención de Token mediante JWT
 
+def search_email(email):
+    collection = db.collection("users")
+    doc_ref = collection.where("email", "==", email).get()
+    doc = doc_ref[0] if doc_ref else None
+    
+    return doc if doc is not None else None
 
-
-
-
-
+def search_password(password):
+    collection = db.collection("users")
+    doc_ref = collection.where("user_password", "==", password).get()
+    doc= doc_ref[0] if doc_ref else None
+    
+    return doc if doc is not None else None
 
 
 #----------------------------------------------------------------
