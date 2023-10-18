@@ -1,11 +1,13 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
+
 #----------------------------------------------------------------
-from dto.request_dto import RequestUserDto
-from dto.dto_user import DtoUser
+from dto import requestUserDto, respondUserAuthorized
+from dto.requestUserAuthorized import RequestUserAuthorized
+from dto.respondUserDto import DtoUser
 #----------------------------------------------------------------
 from models.user import User
-from models.respond_user import RespondUser
+from models.respond import RespondUser
 #----------------------------------------------------------------
 import firebase_admin
 from firebase_admin import firestore
@@ -24,6 +26,16 @@ db = firestore.client()
 
 def get_db():
     return db
+
+#----------------------------------------------------------------
+#Métod de obtención de Token mediante JWT
+
+
+
+
+
+
+
 
 #----------------------------------------------------------------
 
@@ -72,11 +84,12 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 #Metodos Post User
 @user.post("/api/users")
 async def create_user(
-    request: RequestUserDto,
+    request: requestUserDto,
     db: firestore.Client = Depends(get_db),
 ):
     user = User(
         id= str(uuid.uuid4()),
+        isAuthorized= False,
         origin=request.origin,
         type=request.type,
         username=request.username,
@@ -108,6 +121,25 @@ def update_user(user_id: str, updatedUser: User, db: firestore.Client = Depends(
 
     # Return a success message.
     return {"message": "User has been updated successfully"}
+
+#Metodo Put isAuthorized
+@user.put("/api/users/{user_id}/{isAuthorized}")
+def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firestore.Client = Depends(get_db)):
+    doc_ref = db.collection("users").document(user_id)
+
+    # Check if the document exists.
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update the document with the new data.
+    data = {"isAuthorized": isAuthorized}
+    doc_ref.update(data)
+
+    # Return a success message.
+    return respondUserAuthorized(success=True, message="The User Has Been Updated Succesfully")
+
+
 
 #----------------------------------------------------------------
 

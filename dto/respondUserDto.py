@@ -1,11 +1,10 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class User(BaseModel):
-    id: Optional[str]
+class DtoUser(BaseModel):
+    id: str
     isAuthorized : bool
-    origin: int
+    origin : int
     type: int
     username: str
     email: str
-    user_password: str
