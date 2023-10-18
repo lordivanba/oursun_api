@@ -1,10 +1,14 @@
 from typing import Union
 from fastapi import FastAPI
-from router.user_route import user
+from router import user
+
+from router import kits
 
 app = FastAPI()
-app.include_router(user)
 
-@app.get("/")
-def root():
-    return {"message": "Hi, I am OurSun Api"}
+@app.router.get("/", tags="/")
+def read():
+    return {"hello": "world"}
+
+app.include_router(kits.router,prefix="/kits", tags=["kits"])
+app.include_router(user.user, prefix="/users", tags=["users"])
