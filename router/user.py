@@ -1,9 +1,10 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
-
 #----------------------------------------------------------------
-from dto import requestUserDto, respondUserAuthorized
-from dto.requestUserAuthorized import RequestUserAuthorized
+from dto.requestUpdateUserDto import RequestUpdateUserDto
+from dto.requestUserDto import RequestUserDto
+from dto.respondUpateUserDto import RespondUpdateUserDto
+from dto.respondUserAuthorized import RespondUserAuthorized
 from dto.respondUserDto import DtoUser
 #----------------------------------------------------------------
 from models.user import User
@@ -57,7 +58,7 @@ async def get_users(db: firestore.Client = Depends(get_db)):
     if not users:
         return RespondUser(success=False, data=[{"message": "No users found"}])
 
-    return RespondUser(success=True, data=users)
+    return RespondUser(success=True, data=users, message="")
 
 @user.get("/api/user/{user_id}")
 async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
@@ -77,14 +78,14 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     # Convert the user to a DtoUser object.
     dto_user = DtoUser(**user)
 
-    return RespondUser(success=True, data=[dto_user])
+    return RespondUser(success=True, data=[dto_user], message="")
 
 #----------------------------------------------------------------
 
 #Metodos Post User
 @user.post("/api/users")
 async def create_user(
-    request: requestUserDto,
+    request: RequestUserDto,
     db: firestore.Client = Depends(get_db),
 ):
     user = User(
@@ -99,15 +100,15 @@ async def create_user(
 
     try:
         doc_ref = db.collection("users").document(user.id).set(user.model_dump())
-        return RespondUser(success=True, data=["The user has been created successfully"])
+        return RespondUser(success=True, data=[], message="The user has been created successfully")
     except Exception as e:
-        return RespondUser(success=False, data=str(e))
+        return RespondUser(success=False, data=str(e), message="")
 
 #----------------------------------------------------------------
 
 #Metodos Put User
 @user.put("/api/users/{user_id}")
-def update_user(user_id: str, updatedUser: User, db: firestore.Client = Depends(get_db)):
+def update_user(user_id: str, updated_user: RequestUpdateUserDto, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
 
     # Check if the document exists.
@@ -116,15 +117,15 @@ def update_user(user_id: str, updatedUser: User, db: firestore.Client = Depends(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Update the document with the new data.
-    data = updatedUser.model_dump()
+    data = updated_user.model_dump(exclude_unset=True)
     doc_ref.update(data)
-
+    
     # Return a success message.
-    return {"message": "User has been updated successfully"}
+    return RespondUpdateUserDto(success = True, message="The User Has Been Updated Succesfully")
 
 #Metodo Put isAuthorized
 @user.put("/api/users/{user_id}/{isAuthorized}")
-def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firestore.Client = Depends(get_db)):
+async def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
 
     # Check if the document exists.
@@ -135,11 +136,8 @@ def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firestore.Cl
     # Update the document with the new data.
     data = {"isAuthorized": isAuthorized}
     doc_ref.update(data)
-
     # Return a success message.
-    return respondUserAuthorized(success=True, message="The User Has Been Updated Succesfully")
-
-
+    return RespondUserAuthorized(success=True, message="The User Has Been Updated Succesfully")
 
 #----------------------------------------------------------------
 
@@ -156,5 +154,5 @@ async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref.delete()
 
     # Devolver la respuesta
-    return RespondUser(success=True, data=[user_id])
+    return RespondUser(success=True, data=[], message="The User Has Been deleted Successfully")
 #----------------------------------------------------------------

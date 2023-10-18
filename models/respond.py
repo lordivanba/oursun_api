@@ -4,4 +4,4 @@ from typing import Optional
 class RespondUser (BaseModel):
     success: bool
     data: Optional[list]
-    message: str
+    message: Optional[str]
