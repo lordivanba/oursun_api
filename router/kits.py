@@ -16,8 +16,9 @@ db = firestore.client()
 @router.post("/upload/")
 async def upload_image(image: UploadFile = File(...)):
     if not allowed_file(image.filename):
-        raise HTTPException(status_code=422, detail="Only JPG, JPEG, and PNG files are allowed.")
-
+        raise HTTPException(
+            status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
+        )
 
     try:
         image_url = processImage(image)
@@ -62,7 +63,7 @@ def processImage(image: UploadFile = File(...)):
     return image_url
 
 
-def saveImageInStorage(image,content_type):
+def saveImageInStorage(image, content_type):
     # Save the image to Firebase Storage with the correct content type\
     myuuid = uuid.uuid4()
     blob = storage_client.blob(str(myuuid))
@@ -103,4 +104,3 @@ def optimize_image(file, filename):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-

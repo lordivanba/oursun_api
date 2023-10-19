@@ -1,6 +1,6 @@
 /venv/
 __pycache__
 our-sun-30a0c-firebase-adminsdk-l1nr7-e5d1d542bb.json
-
+.env
 env/
 venv/

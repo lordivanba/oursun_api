@@ -1,60 +1,116 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from typing import Union
 import uuid
-#----------------------------------------------------------------
+
+# ----------------------------------------------------------------
 from dto.requestUpdateUserDto import RequestUpdateUserDto
 from dto.requestUserDto import RequestUserDto
 from dto.respondUpateUserDto import RespondUpdateUserDto
 from dto.respondUserAuthorized import RespondUserAuthorized
 from dto.respondUserDto import DtoUser
-#----------------------------------------------------------------
-from models.user import User
+
+# ----------------------------------------------------------------
+from models.user import User, UserLoginSchema
 from models.respond import RespondUser
-#----------------------------------------------------------------
+
+# ----------------------------------------------------------------
 import firebase_admin
 from firebase_admin import firestore
 from firebase_admin import credentials
-#----------------------------------------------------------------
 
-#----------------------------------------------------------------
+# ----------------------------------------------------------------
+from auth.jwt_handler import signJWT
+from auth.jwt_bearer import JWTBearer
 
-user =  APIRouter()
+# ----------------------------------------------------------------
+
+user = APIRouter()
 
 
-#----------------------------------------------------------------
+# ----------------------------------------------------------------
 
 # Use a service account.
-cred = credentials.Certificate(
-    'our-sun-30a0c-firebase-adminsdk-l1nr7-e5d1d542bb.json')
+cred = credentials.Certificate("our-sun-30a0c-firebase-adminsdk-l1nr7-e5d1d542bb.json")
 app = firebase_admin.initialize_app(cred)
 db = firestore.client()
+
 
 def get_db():
     return db
 
-#----------------------------------------------------------------
-#Método de obtención de Token mediante JWT
+
+# ----------------------------------------------------------------
+# Método de obtención de Token mediante JWT
+
+
+@user.post("/signup")
+async def create_user(
+    request: RequestUserDto,
+    db: firestore.Client = Depends(get_db),
+):
+    user = User(
+        id=str(uuid.uuid4()),
+        isAuthorized=False,
+        origin=request.origin,
+        type=request.type,
+        username=request.username,
+        email=request.email,
+        user_password=request.user_password,
+    )
+
+    try:
+        doc_ref = db.collection("users").document(user.id).set(user.model_dump())
+        # RespondUser(success=True, data=[], message="The user has been created successfully")
+        return signJWT(user.email)
+    except Exception as e:
+        return RespondUser(success=False, data=str(e), message="")
+
+
+@user.post("/login")
+def user_login(user: UserLoginSchema = Body(default=None)):
+    if check_user(user):
+        return signJWT(user.email)
+    else:
+        return {"error": "Invalid Login Details"}
+
 
 def search_email(email):
     collection = db.collection("users")
     doc_ref = collection.where("email", "==", email).get()
     doc = doc_ref[0] if doc_ref else None
-    
     return doc if doc is not None else None
+
 
 def search_password(password):
     collection = db.collection("users")
     doc_ref = collection.where("user_password", "==", password).get()
-    doc= doc_ref[0] if doc_ref else None
-    
+    doc = doc_ref[0] if doc_ref else None
+
     return doc if doc is not None else None
 
 
-#----------------------------------------------------------------
+def check_user(data: UserLoginSchema):
+    email = search_email(data.email)
+    password = search_password(data.password)
 
-#Metodos Get User
-@user.get("/api/users")
-async def get_users(db: firestore.Client = Depends(get_db)):
+    if email is None or password is None:
+        return False
+
+    email_value = email.get("email")
+    password_value = password.get("user_password")
+
+    if data.email == email_value and data.password == password_value:
+        return True
+    else:
+        return False
+
+
+# ----------------------------------------------------------------
+
+
+# Metodos Get User
+@user.get("/get_users", dependencies=[Depends(JWTBearer())])
+def get_users(db: firestore.Client = Depends(get_db)):
     docs = db.collection("users").get()
 
     users = []
@@ -72,7 +128,8 @@ async def get_users(db: firestore.Client = Depends(get_db)):
 
     return RespondUser(success=True, data=users, message="")
 
-@user.get("/api/user/{user_id}")
+
+@user.get("/get_byId/{user_id}", dependencies=[Depends(JWTBearer())])
 async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     users_ref = db.collection("users").document(user_id)
 
@@ -92,35 +149,22 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
     return RespondUser(success=True, data=[dto_user], message="")
 
-#----------------------------------------------------------------
 
-#Metodos Post User
-@user.post("/api/users")
-async def create_user(
-    request: RequestUserDto,
+# ----------------------------------------------------------------
+
+# Metodos Post User
+
+
+# ----------------------------------------------------------------
+
+
+# Metodos Put User
+@user.put("/update/{user_id}", dependencies=[Depends(JWTBearer())])
+def update_user(
+    user_id: str,
+    updated_user: RequestUpdateUserDto,
     db: firestore.Client = Depends(get_db),
 ):
-    user = User(
-        id= str(uuid.uuid4()),
-        isAuthorized= False,
-        origin=request.origin,
-        type=request.type,
-        username=request.username,
-        email=request.email,
-        user_password=request.user_password,
-    )
-
-    try:
-        doc_ref = db.collection("users").document(user.id).set(user.model_dump())
-        return RespondUser(success=True, data=[], message="The user has been created successfully")
-    except Exception as e:
-        return RespondUser(success=False, data=str(e), message="")
-
-#----------------------------------------------------------------
-
-#Metodos Put User
-@user.put("/api/users/{user_id}")
-def update_user(user_id: str, updated_user: RequestUpdateUserDto, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
 
     # Check if the document exists.
@@ -131,13 +175,22 @@ def update_user(user_id: str, updated_user: RequestUpdateUserDto, db: firestore.
     # Update the document with the new data.
     data = updated_user.model_dump(exclude_unset=True)
     doc_ref.update(data)
-    
-    # Return a success message.
-    return RespondUpdateUserDto(success = True, message="The User Has Been Updated Succesfully")
 
-#Metodo Put isAuthorized
-@user.put("/api/users/{user_id}/{isAuthorized}")
-async def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firestore.Client = Depends(get_db)):
+    # Return a success message.
+    return RespondUpdateUserDto(
+        success=True, message="The User Has Been Updated Succesfully"
+    )
+
+
+# Metodo Put isAuthorized
+
+
+@user.put(
+    "/update_authorized/{user_id}/{isAuthorized}", dependencies=[Depends(JWTBearer())]
+)
+async def update_user_Is_Authorized(
+    user_id: str, isAuthorized: bool, db: firestore.Client = Depends(get_db)
+):
     doc_ref = db.collection("users").document(user_id)
 
     # Check if the document exists.
@@ -149,12 +202,17 @@ async def update_user_Is_Authorized(user_id: str,isAuthorized : bool, db: firest
     data = {"isAuthorized": isAuthorized}
     doc_ref.update(data)
     # Return a success message.
-    return RespondUserAuthorized(success=True, message="The User Has Been Updated Succesfully")
+    return RespondUserAuthorized(
+        success=True, message="The User Has Been Updated Succesfully"
+    )
 
-#----------------------------------------------------------------
 
-#Metodos Delete User
-@user.delete("/api/users/{user_id}")
+# ----------------------------------------------------------------
+
+# Metodos Delete User
+
+
+@user.delete("/delete/{user_id}", dependencies=[Depends(JWTBearer())])
 async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
 
@@ -166,5 +224,9 @@ async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref.delete()
 
     # Devolver la respuesta
-    return RespondUser(success=True, data=[], message="The User Has Been deleted Successfully")
-#----------------------------------------------------------------
+    return RespondUser(
+        success=True, data=[], message="The User Has Been deleted Successfully"
+    )
+
+
+# ----------------------------------------------------------------
