@@ -69,9 +69,13 @@ async def create_user(
 @user.post("/login")
 def user_login(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
-        return signJWT(user.email)
+        return RespondUser(
+            success=True,
+            data=[signJWT(user.email)],
+            message="The User Loged Succesfully",
+        )
     else:
-        return {"error": "Invalid Login Details"}
+        raise HTTPException(status_code=404, detail= "User not Found")
 
 
 def search_email(email):
