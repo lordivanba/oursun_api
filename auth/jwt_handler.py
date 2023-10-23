@@ -10,12 +10,21 @@ JWT_ALGORITHM = config("algorithm")
 
 
 def token_response(token: str):
-    return {"access_token": token}
+    return {token}
 
 
 # function used for signing the JWT string
-def signJWT(user_id: str) -> Dict[str, str]:
-    payload = {"user_id": user_id, "expires": time.time() + 1200}
+def signJWT(
+    user_id: str, username: str, isAuthorized: bool, origin: int, type: int
+) -> Dict[str, str]:
+    payload = {
+        "user_id": user_id,
+        "username": username,
+        "isAuthorized": isAuthorized,
+        "origin": origin,
+        "type": type,
+        "expires": time.time() + 1200,
+    }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     return token_response(token)

@@ -54,33 +54,48 @@ async def create_user(
         origin=request.origin,
         type=request.type,
         username=request.username,
-        email=request.email,
         user_password=request.user_password,
     )
 
     try:
         doc_ref = db.collection("users").document(user.id).set(user.model_dump())
-        # RespondUser(success=True, data=[], message="The user has been created successfully")
-        return signJWT(user.email)
+        # RespondUser(success=True, data=[], message="")
+        return RespondUser(
+            success=True,
+            data=[
+                signJWT(
+                    user.id, user.username, user.isAuthorized, user.origin, user.type
+                )
+            ],
+            message="The user has been created successfully",
+        )
     except Exception as e:
         return RespondUser(success=False, data=str(e), message="")
 
 
 @user.post("/login")
 def user_login(user: UserLoginSchema = Body(default=None)):
-    if check_user(user):
+    if check_user(user):        
         return RespondUser(
             success=True,
-            data=[signJWT(user.email)],
-            message="The User Loged Succesfully",
+            data=[
+                signJWT(
+                    data.id, data.username, data.isAuthorized, data.origin, data.type
+                )
+            ],
+            message="The User has been Loged Succesfully",
         )
     else:
-        raise HTTPException(status_code=404, detail= "User not Found")
+        raise HTTPException(status_code=404, detail="User not Found")
 
+@user.post("prueba/login")
+def example_post(username: str, password: str):
+    search_user(username, password)
+    
 
-def search_email(email):
+def search_username(username):
     collection = db.collection("users")
-    doc_ref = collection.where("email", "==", email).get()
+    doc_ref = collection.where("username", "==", username).get()
     doc = doc_ref[0] if doc_ref else None
     return doc if doc is not None else None
 
@@ -92,18 +107,27 @@ def search_password(password):
 
     return doc if doc is not None else None
 
+def search_user(username:str, password:str):
+    collection = db.collection("users")
+    username = search_username(username)
+    password = search_password(password)
+    if username is None or password is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    print(username, password)
+    
+
 
 def check_user(data: UserLoginSchema):
-    email = search_email(data.email)
+    username = search_username(data.username)
     password = search_password(data.password)
 
-    if email is None or password is None:
+    if username is None or password is None:
         return False
 
-    email_value = email.get("email")
+    username_value = username.get("username")
     password_value = password.get("user_password")
 
-    if data.email == email_value and data.password == password_value:
+    if data.username == username_value and data.password == password_value:
         return True
     else:
         return False
@@ -227,7 +251,7 @@ async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
 
     doc_ref.delete()
 
-    # Devolver la respuesta
+    # Return the respond
     return RespondUser(
         success=True, data=[], message="The User Has Been deleted Successfully"
     )
