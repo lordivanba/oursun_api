@@ -1,22 +1,21 @@
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from typing import Union
 import uuid
+from dto.api_response_dto import ApiResponseDto
 
 # ----------------------------------------------------------------
-from dto.requestUpdateUserDto import RequestUpdateUserDto
 from dto.requestUserDto import RequestUserDto
-from dto.respondUpateUserDto import RespondUpdateUserDto
-from dto.respondUserAuthorized import RespondUserAuthorized
 from dto.respondUserDto import DtoUser
+from dto.respond import RespondUser
 
 # ----------------------------------------------------------------
 from models.user import User, UserLoginSchema
-from models.respond import RespondUser
 
 # ----------------------------------------------------------------
-import firebase_admin
 from firebase_admin import firestore
 from firebase_admin import credentials
+import firebase_admin
+from firebase_admin import auth
 
 # ----------------------------------------------------------------
 from auth.jwt_handler import signJWT
@@ -75,23 +74,39 @@ async def create_user(
 
 @user.post("/login")
 def user_login(user: UserLoginSchema = Body(default=None)):
-    if check_user(user):        
+    if check_user(user):
+        data = get_user_byUsername(user.username)
+        
         return RespondUser(
             success=True,
-            data=[
-                signJWT(
-                    data.id, data.username, data.isAuthorized, data.origin, data.type
-                )
-            ],
+            data= signJWT(data.id, data.username, data.isAuthorized, data.origin, data.type)
+            ,
             message="The User has been Loged Succesfully",
         )
     else:
         raise HTTPException(status_code=404, detail="User not Found")
 
-@user.post("prueba/login")
-def example_post(username: str, password: str):
-    search_user(username, password)
+
+@user.get("/nolose")
+def nolose(username):
+    pass
     
+
+
+def get_user_byUsername( username: str):
+    docs = db.collection("users").where("username", "==", username).get()
+    users = []
+    for doc in docs:
+        user = doc.to_dict()
+        user["id"] = doc.id
+        # Convert the user to a DtoUser object.
+        dto_user = DtoUser(**user)
+        users.append(dto_user)
+    if not users:
+        return RespondUser(success=False, data=[{"message": "No user found with username '{}'".format(username)}])
+    return dto_user
+
+
 
 def search_username(username):
     collection = db.collection("users")
@@ -106,15 +121,6 @@ def search_password(password):
     doc = doc_ref[0] if doc_ref else None
 
     return doc if doc is not None else None
-
-def search_user(username:str, password:str):
-    collection = db.collection("users")
-    username = search_username(username)
-    password = search_password(password)
-    if username is None or password is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    print(username, password)
-    
 
 
 def check_user(data: UserLoginSchema):
@@ -138,7 +144,7 @@ def check_user(data: UserLoginSchema):
 
 # Metodos Get User
 @user.get("/get_users", dependencies=[Depends(JWTBearer())])
-def get_users(db: firestore.Client = Depends(get_db)):
+def get_user(db: firestore.Client = Depends(get_db)):
     docs = db.collection("users").get()
 
     users = []
@@ -152,9 +158,9 @@ def get_users(db: firestore.Client = Depends(get_db)):
         users.append(dto_user)
 
     if not users:
-        return RespondUser(success=False, data=[{"message": "No users found"}])
+        return ApiResponseDto(success=False, data=[{"message": "No users found"}])
 
-    return RespondUser(success=True, data=users, message="")
+    return ApiResponseDto(success=True, data=users, message="")
 
 
 @user.get("/get_byId/{user_id}", dependencies=[Depends(JWTBearer())])
@@ -166,7 +172,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
     # If the document does not exist, raise a 404 error.
     if not doc.exists:
-        return RespondUser(success=False, data=[{"message": "User not found"}])
+        return RespondUser(success=False, data= None, message= "User not found")
 
     # Return the document as JSON.
     user = doc.to_dict()
@@ -174,8 +180,8 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
     # Convert the user to a DtoUser object.
     dto_user = DtoUser(**user)
-
-    return RespondUser(success=True, data=[dto_user], message="")
+    value = dto_user.model_dump()
+    return RespondUser(success=True, data = value, message="")
 
 
 # ----------------------------------------------------------------
@@ -187,31 +193,9 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
 
 # Metodos Put User
-@user.put("/update/{user_id}", dependencies=[Depends(JWTBearer())])
-def update_user(
-    user_id: str,
-    updated_user: RequestUpdateUserDto,
-    db: firestore.Client = Depends(get_db),
-):
-    doc_ref = db.collection("users").document(user_id)
-
-    # Check if the document exists.
-    doc = doc_ref.get()
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Update the document with the new data.
-    data = updated_user.model_dump(exclude_unset=True)
-    doc_ref.update(data)
-
-    # Return a success message.
-    return RespondUpdateUserDto(
-        success=True, message="The User Has Been Updated Succesfully"
-    )
 
 
 # Metodo Put isAuthorized
-
 
 @user.put(
     "/update_authorized/{user_id}/{isAuthorized}", dependencies=[Depends(JWTBearer())]
@@ -230,8 +214,8 @@ async def update_user_Is_Authorized(
     data = {"isAuthorized": isAuthorized}
     doc_ref.update(data)
     # Return a success message.
-    return RespondUserAuthorized(
-        success=True, message="The User Has Been Updated Succesfully"
+    return RespondUser(
+        success=True,data=None, message="The User Has Been Updated Succesfully"
     )
 
 
@@ -253,7 +237,7 @@ async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
 
     # Return the respond
     return RespondUser(
-        success=True, data=[], message="The User Has Been deleted Successfully"
+        success=True, data=None, message="The User Has Been deleted Successfully"
     )
 
 
