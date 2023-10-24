@@ -61,11 +61,9 @@ async def create_user(
         # RespondUser(success=True, data=[], message="")
         return RespondUser(
             success=True,
-            data=[
-                signJWT(
-                    user.id, user.username, user.isAuthorized, user.origin, user.type
-                )
-            ],
+            data=signJWT(
+                user.id, user.username, user.isAuthorized, user.origin, user.type
+            ),
             message="The user has been created successfully",
         )
     except Exception as e:
@@ -76,11 +74,12 @@ async def create_user(
 def user_login(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
         data = get_user_byUsername(user.username)
-        
+
         return RespondUser(
             success=True,
-            data= signJWT(data.id, data.username, data.isAuthorized, data.origin, data.type)
-            ,
+            data=signJWT(
+                data.id, data.username, data.isAuthorized, data.origin, data.type
+            ),
             message="The User has been Loged Succesfully",
         )
     else:
@@ -90,10 +89,9 @@ def user_login(user: UserLoginSchema = Body(default=None)):
 @user.get("/nolose")
 def nolose(username):
     pass
-    
 
 
-def get_user_byUsername( username: str):
+def get_user_byUsername(username: str):
     docs = db.collection("users").where("username", "==", username).get()
     users = []
     for doc in docs:
@@ -105,7 +103,6 @@ def get_user_byUsername( username: str):
     if not users:
         raise HTTPException(status_code=404, detail="User not found")
     return dto_user
-
 
 
 def search_username(username):
@@ -158,7 +155,7 @@ def get_user(db: firestore.Client = Depends(get_db)):
         users.append(dto_user)
 
     if not users:
-        return ApiResponseDto(success=False, data=[{"message": "No users found"}])
+        raise HTTPException(status_code=404, detail="Users not found")
 
     return ApiResponseDto(success=True, data=users, message="")
 
@@ -172,7 +169,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
     # If the document does not exist, raise a 404 error.
     if not doc.exists:
-        return RespondUser(success=False, data= None, message= "User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Return the document as JSON.
     user = doc.to_dict()
@@ -181,7 +178,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     # Convert the user to a DtoUser object.
     dto_user = DtoUser(**user)
     value = dto_user.model_dump()
-    return RespondUser(success=True, data = value, message="")
+    return RespondUser(success=True, data=value, message="")
 
 
 # ----------------------------------------------------------------
@@ -196,6 +193,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
 
 # Metodo Put isAuthorized
+
 
 @user.put(
     "/update_authorized/{user_id}/{isAuthorized}", dependencies=[Depends(JWTBearer())]
@@ -215,7 +213,7 @@ async def update_user_Is_Authorized(
     doc_ref.update(data)
     # Return a success message.
     return RespondUser(
-        success=True,data=None, message="The User Has Been Updated Succesfully"
+        success=True, data=None, message="The User Has Been Updated Succesfully"
     )
 
 
