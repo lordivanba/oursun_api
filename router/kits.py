@@ -1,7 +1,8 @@
 import io
 import uuid
+from auth.jwt_bearer import JWTBearer
 from dto.api_response_dto import ApiResponseDto
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from firebase_admin import firestore, storage
 from PIL import Image
 
@@ -13,7 +14,7 @@ storage_client = storage.bucket("our-sun-30a0c.appspot.com")
 db = firestore.client()
 
 
-@router.post("/upload/")
+@router.post("/upload/", dependencies=[Depends(JWTBearer())])
 async def upload_image(image: UploadFile = File(...)):
     if not allowed_file(image.filename):
         raise HTTPException(
@@ -33,7 +34,7 @@ async def upload_image(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/get_first_image_url")
+@router.get("/get_first_image_url", dependencies=[Depends(JWTBearer())])
 async def get_first_image_url():
     # List all objects in the root
 

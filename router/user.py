@@ -6,7 +6,7 @@ from dto.api_response_dto import ApiResponseDto
 # ----------------------------------------------------------------
 from dto.requestUserDto import RequestUserDto
 from dto.respondUserDto import DtoUser
-from dto.respond import RespondUser
+from dto.respond import Respond
 
 # ----------------------------------------------------------------
 from models.user import User, UserLoginSchema
@@ -47,6 +47,13 @@ async def create_user(
     request: RequestUserDto,
     db: firestore.Client = Depends(get_db),
 ):
+    # Check if the username already exists.
+    username_ref = (
+        db.collection("users").where("username", "==", request.username).get()
+    )
+    if username_ref:
+        raise HTTPException(status_code=409, detail="Username already exists")
+
     user = User(
         id=str(uuid.uuid4()),
         isAuthorized=False,
@@ -59,7 +66,7 @@ async def create_user(
     try:
         doc_ref = db.collection("users").document(user.id).set(user.model_dump())
         # RespondUser(success=True, data=[], message="")
-        return RespondUser(
+        return Respond(
             success=True,
             data=signJWT(
                 user.id, user.username, user.isAuthorized, user.origin, user.type
@@ -67,7 +74,7 @@ async def create_user(
             message="The user has been created successfully",
         )
     except Exception as e:
-        return RespondUser(success=False, data=str(e), message="")
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @user.post("/login")
@@ -75,7 +82,7 @@ def user_login(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
         data = get_user_byUsername(user.username)
 
-        return RespondUser(
+        return Respond(
             success=True,
             data=signJWT(
                 data.id, data.username, data.isAuthorized, data.origin, data.type
@@ -84,11 +91,6 @@ def user_login(user: UserLoginSchema = Body(default=None)):
         )
     else:
         raise HTTPException(status_code=404, detail="User not Found")
-
-
-@user.get("/nolose")
-def nolose(username):
-    pass
 
 
 def get_user_byUsername(username: str):
@@ -178,7 +180,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     # Convert the user to a DtoUser object.
     dto_user = DtoUser(**user)
     value = dto_user.model_dump()
-    return RespondUser(success=True, data=value, message="")
+    return Respond(success=True, data=value, message="")
 
 
 # ----------------------------------------------------------------
@@ -190,9 +192,6 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
 
 # Metodos Put User
-
-
-# Metodo Put isAuthorized
 
 
 @user.put(
@@ -212,7 +211,7 @@ async def update_user_Is_Authorized(
     data = {"isAuthorized": isAuthorized}
     doc_ref.update(data)
     # Return a success message.
-    return RespondUser(
+    return Respond(
         success=True, data=None, message="The User Has Been Updated Succesfully"
     )
 
@@ -234,9 +233,14 @@ async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref.delete()
 
     # Return the respond
-    return RespondUser(
+    return Respond(
         success=True, data=None, message="The User Has Been deleted Successfully"
     )
 
 
 # ----------------------------------------------------------------
+
+
+@user.get("/test")
+def test():
+    return Respond(success=True, data=None, message="Nice test")
