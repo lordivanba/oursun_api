@@ -103,7 +103,7 @@ def get_user_byUsername( username: str):
         dto_user = DtoUser(**user)
         users.append(dto_user)
     if not users:
-        return RespondUser(success=False, data=[{"message": "No user found with username '{}'".format(username)}])
+        raise HTTPException(status_code=404, detail="User not found")
     return dto_user
 
 
