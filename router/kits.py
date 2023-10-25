@@ -1,10 +1,17 @@
+import fastapi
 import io
 import uuid
+
+from fastapi.encoders import jsonable_encoder
 from auth.jwt_bearer import JWTBearer
 from dto.api_response_dto import ApiResponseDto
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from typing import List
 from firebase_admin import firestore, storage
 from PIL import Image
+from dto.kitCreateRequestDto import KitCreateRequestDto
+
+from models.kit import Kit
 
 
 router = APIRouter()
@@ -14,24 +21,26 @@ storage_client = storage.bucket("our-sun-30a0c.appspot.com")
 db = firestore.client()
 
 
-@router.post("/upload/", dependencies=[Depends(JWTBearer())])
-async def upload_image(image: UploadFile = File(...)):
-    if not allowed_file(image.filename):
-        raise HTTPException(
-            status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
-        )
+@router.get("/get_kits", dependencies=[Depends(JWTBearer())])
+async def get_kits():
+    docs = db.collection("kits").get()
+    kits = []
 
-    try:
-        image_url = processImage(image)
+    for doc in docs:
+        kit = doc.to_dict()
+        kit["id"] = doc.id
+        # Convert the kit to a kit object.
+        dto_kit = Kit(**kit)
+        kits.append(dto_kit)
 
-        return ApiResponseDto(
-            success=True,
-            data=[{"url": image_url}],
-            message="Image uploaded and user created successfully.",
-        )
+    if not kits:
+        raise HTTPException(status_code=404, detail="Kits not found")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return ApiResponseDto(
+        success=True,
+        data=kits,
+        message="message",
+    )
 
 
 @router.get("/get_first_image_url", dependencies=[Depends(JWTBearer())])
@@ -54,6 +63,46 @@ async def get_first_image_url():
         return {"image_url": public_url}
     else:
         return {"error": "No images found in Firebase Storage"}
+
+
+@router.post("/upload")
+async def upload_kit(data: KitCreateRequestDto, files: List[UploadFile] = File(...)):
+    urls = []
+    urls.append(upload_images(files))
+
+    data = Kit(
+        id=str(uuid.uuid4()),
+        name=data.name,
+        price=data.price,
+        description=data.description,
+        features=data.features,
+        images=urls,
+    )
+
+    return ApiResponseDto(
+        success=True,
+        data=data,
+        message="Images uploaded and kit created successfully.",
+    )
+
+
+async def upload_images(image: List[UploadFile] = File(...)):
+    for image_file in image:
+        if not allowed_file(image_file.filename):
+            raise HTTPException(
+                status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
+            )
+
+    try:
+        image_urls = []
+        for image_file in image:
+            image_url = processImage(image_file)
+            image_urls.append(image_url)
+
+        return list(image_urls)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def processImage(image: UploadFile = File(...)):

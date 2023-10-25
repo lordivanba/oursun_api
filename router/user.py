@@ -55,6 +55,7 @@ async def create_user(
         raise HTTPException(status_code=409, detail="Username already exists")
 
     user = User(
+        
         id=str(uuid.uuid4()),
         isAuthorized=False,
         origin=request.origin,
