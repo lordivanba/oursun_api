@@ -43,6 +43,7 @@ async def get_kits():
         message="message",
     )
 
+
 @router.get("/get_kit_By_Id/{kit_id}", dependencies=[Depends(JWTBearer())])
 async def get_kits_by_Id(kit_id: str):
     doc_ref = db.collection("kits").document(kit_id)
@@ -84,35 +85,36 @@ async def get_first_image_url():
         return {"error": "No images found in Firebase Storage"}
 
 
-@router.post("/upload")
-async def upload_kit(data: KitCreateRequestDto, files: List[UploadFile]):
-    urls = []
-    urls.append(upload_images(files))
-
-    data = Kit(
+@router.post("/upload", dependencies=[Depends(JWTBearer())])
+async def upload_kit(data: KitCreateRequestDto):
+    kit = Kit(
         id=str(uuid.uuid4()),
         name=data.name,
-        price=data.price,
         description=data.description,
         features=data.features,
-        images=["juancime.com", "rafaflow.com"],
+        price=data.price,
+        images=None,
     )
-    value = data.model_dump()
+    # Guarda el objeto "kit" en Firestore, si es necesario
+    response_data = kit.model_dump()
+    doc_ref = db.collection("kits").document(kit.id).set(response_data)
 
-    try:
-        doc_ref = db.collection("kits").document(data.id).set(data.model_dump())
-        
-        return Respond(
-            success=True,
-            data=value,
-            message="the kit has been created successfully",
-        )
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return Respond(
+        success=True,
+        data=response_data,
+        message="Kit created successfully.",
+    )
 
 
-async def upload_images(image: List[UploadFile] = File(...)):
-    for image_file in image:
+@router.put("/upload_Images/{user_id}", dependencies=[Depends(JWTBearer())])
+async def upload_images(user_id, images: List[UploadFile] = File(...)):
+    doc_ref = db.collection("kits").document(user_id)
+
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Kit not found")
+
+    for image_file in images:
         if not allowed_file(image_file.filename):
             raise HTTPException(
                 status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
@@ -120,11 +122,16 @@ async def upload_images(image: List[UploadFile] = File(...)):
 
     try:
         image_urls = []
-        for image_file in image:
+        for image_file in images:
             image_url = processImage(image_file)
             image_urls.append(image_url)
 
-        return list(image_urls)
+        data = {"images": image_urls}
+        doc_ref.update(data)
+
+        return Respond(
+            success=True, data=None, message="The images Has Been Updated Succesfully"
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
