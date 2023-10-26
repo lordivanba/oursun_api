@@ -10,6 +10,7 @@ from typing import List
 from firebase_admin import firestore, storage
 from PIL import Image
 from dto.kitCreateRequestDto import KitCreateRequestDto
+from dto.respond import Respond
 
 from models.kit import Kit
 
@@ -42,6 +43,24 @@ async def get_kits():
         message="message",
     )
 
+@router.get("/get_kit_By_Id/{kit_id}", dependencies=[Depends(JWTBearer())])
+async def get_kits_by_Id(kit_id: str):
+    doc_ref = db.collection("kits").document(kit_id)
+    doc = doc_ref.get()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kit not found")
+    kit = doc.to_dict()
+    kit["id"] = doc.id
+
+    # Convert the kit to a kit object.
+    dto_kit = Kit(**kit)
+    value = dto_kit.model_dump()
+    return Respond(
+        success=True,
+        data=value,
+        message="message",
+    )
+
 
 @router.get("/get_first_image_url", dependencies=[Depends(JWTBearer())])
 async def get_first_image_url():
@@ -66,7 +85,7 @@ async def get_first_image_url():
 
 
 @router.post("/upload")
-async def upload_kit(data: KitCreateRequestDto, files: List[UploadFile] = File(...)):
+async def upload_kit(data: KitCreateRequestDto, files: List[UploadFile]):
     urls = []
     urls.append(upload_images(files))
 
@@ -76,14 +95,20 @@ async def upload_kit(data: KitCreateRequestDto, files: List[UploadFile] = File(.
         price=data.price,
         description=data.description,
         features=data.features,
-        images=urls,
+        images=["juancime.com", "rafaflow.com"],
     )
+    value = data.model_dump()
 
-    return ApiResponseDto(
-        success=True,
-        data=data,
-        message="Images uploaded and kit created successfully.",
-    )
+    try:
+        doc_ref = db.collection("kits").document(data.id).set(data.model_dump())
+        
+        return Respond(
+            success=True,
+            data=value,
+            message="the kit has been created successfully",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 async def upload_images(image: List[UploadFile] = File(...)):
