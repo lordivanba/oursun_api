@@ -7,4 +7,3 @@ class DtoUser(BaseModel):
     origin : int
     type: int
     username: str
-    email: str

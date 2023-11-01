@@ -1,9 +1,18 @@
+import fastapi
 import io
 import uuid
+
+from fastapi.encoders import jsonable_encoder
+from auth.jwt_bearer import JWTBearer
 from dto.api_response_dto import ApiResponseDto
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from typing import List
 from firebase_admin import firestore, storage
 from PIL import Image
+from dto.kitCreateRequestDto import KitCreateRequestDto
+from dto.respond import Respond
+
+from models.kit import Kit
 
 
 router = APIRouter()
@@ -13,27 +22,48 @@ storage_client = storage.bucket("our-sun-30a0c.appspot.com")
 db = firestore.client()
 
 
-@router.post("/upload/")
-async def upload_image(image: UploadFile = File(...)):
-    if not allowed_file(image.filename):
-        raise HTTPException(
-            status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
-        )
+@router.get("/get_kits", dependencies=[Depends(JWTBearer())])
+async def get_kits():
+    docs = db.collection("kits").get()
+    kits = []
 
-    try:
-        image_url = processImage(image)
+    for doc in docs:
+        kit = doc.to_dict()
+        kit["id"] = doc.id
+        # Convert the kit to a kit object.
+        dto_kit = Kit(**kit)
+        kits.append(dto_kit)
 
-        return ApiResponseDto(
-            success=True,
-            data=[{"url": image_url}],
-            message="Image uploaded and user created successfully.",
-        )
+    if not kits:
+        raise HTTPException(status_code=404, detail="Kits not found")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return ApiResponseDto(
+        success=True,
+        data=kits,
+        message="message",
+    )
 
 
-@router.get("/get_first_image_url")
+@router.get("/get_kit_By_Id/{kit_id}", dependencies=[Depends(JWTBearer())])
+async def get_kits_by_Id(kit_id: str):
+    doc_ref = db.collection("kits").document(kit_id)
+    doc = doc_ref.get()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kit not found")
+    kit = doc.to_dict()
+    kit["id"] = doc.id
+
+    # Convert the kit to a kit object.
+    dto_kit = Kit(**kit)
+    value = dto_kit.model_dump()
+    return Respond(
+        success=True,
+        data=value,
+        message="message",
+    )
+
+
+@router.get("/get_first_image_url", dependencies=[Depends(JWTBearer())])
 async def get_first_image_url():
     # List all objects in the root
 
@@ -53,6 +83,58 @@ async def get_first_image_url():
         return {"image_url": public_url}
     else:
         return {"error": "No images found in Firebase Storage"}
+
+
+@router.post("/upload", dependencies=[Depends(JWTBearer())])
+async def upload_kit(data: KitCreateRequestDto):
+    kit = Kit(
+        id=str(uuid.uuid4()),
+        name=data.name,
+        description=data.description,
+        features=data.features,
+        price=data.price,
+        images=None,
+    )
+    # Guarda el objeto "kit" en Firestore, si es necesario
+    response_data = kit.model_dump()
+    doc_ref = db.collection("kits").document(kit.id).set(response_data)
+
+    return Respond(
+        success=True,
+        data=response_data,
+        message="Kit created successfully.",
+    )
+
+
+@router.put("/upload_Images/{user_id}", dependencies=[Depends(JWTBearer())])
+async def upload_images(user_id, images: List[UploadFile] = File(...)):
+    doc_ref = db.collection("kits").document(user_id)
+
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Kit not found")
+
+    for image_file in images:
+        if not allowed_file(image_file.filename):
+            raise HTTPException(
+                status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
+            )
+
+    try:
+        image_urls = []
+        for image_file in images:
+            image_url = processImage(image_file)
+            image_urls.append(image_url)
+
+        data = {"images": image_urls}
+        doc_ref.update(data)
+
+        return Respond(
+            success=True, data=None, message="The images Has Been Updated Succesfully"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def processImage(image: UploadFile = File(...)):

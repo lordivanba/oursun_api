@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class RespondUser (BaseModel):
+class Respond (BaseModel):
     success: bool
-    data: Optional[list]
+    data: Optional[dict]
     message: Optional[str]
