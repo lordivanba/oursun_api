@@ -1,14 +1,5 @@
-from typing import Union
-from fastapi import FastAPI
-from router import user
+import uvicorn
+from app.api import app  # Adjust the import path
 
-from router import kits
-
-app = FastAPI()
-
-@app.router.get("/", tags="/")
-def read():
-    return {"hello": "world"}
-
-app.include_router(kits.router,prefix="/kits", tags=["kits"])
-app.include_router(user.user, prefix="/users", tags=["users"])
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

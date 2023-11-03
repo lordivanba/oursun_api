@@ -10,7 +10,7 @@ JWT_ALGORITHM = config("algorithm")
 
 
 def token_response(token: str):
-    return {"access token" :token}
+    return {"access token": token}
 
 
 # function used for signing the JWT string
@@ -23,7 +23,8 @@ def signJWT(
         "isAuthorized": isAuthorized,
         "origin": origin,
         "type": type,
-        "expires": time.time() + 1200,
+        # "expires": time.time() + 1200,
+        "expires": time.time() + 12000000,
     }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
