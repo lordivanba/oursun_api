@@ -138,7 +138,7 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/update_authorized/{kit_id}", dependencies=[Depends(JWTBearer())])
+@router.put("/update_kit/{kit_id}", dependencies=[Depends(JWTBearer())])
 def update_kit(user_id: str, request: KitUpdateRequestDto):
     doc_ref = db.collection("kits").document(user_id)
 
@@ -157,7 +157,7 @@ def update_kit(user_id: str, request: KitUpdateRequestDto):
     doc_ref.update(data)
     # Return a success message.
     return Respond(
-        success=True, data=None, message="The User Has Been Updated Succesfully"
+        success=True, data=None, message="The kit Has Been Updated Succesfully"
     )
 
 
