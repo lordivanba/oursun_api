@@ -10,6 +10,7 @@ from typing import List
 from firebase_admin import firestore, storage
 from PIL import Image
 from dto.kitCreateRequestDto import KitCreateRequestDto
+from dto.kitUpdateRequestDto import KitUpdateRequestDto
 from dto.respond import Respond
 
 from models.kit import Kit
@@ -101,7 +102,7 @@ async def upload_kit(data: KitCreateRequestDto):
 
     return Respond(
         success=True,
-        data=response_data,
+        data={"id": kit.id},
         message="Kit created successfully.",
     )
 
@@ -135,6 +136,46 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/update_authorized/{kit_id}", dependencies=[Depends(JWTBearer())])
+def update_kit(user_id: str, request: KitUpdateRequestDto):
+    doc_ref = db.collection("kits").document(user_id)
+
+    # Check if the document exists.
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update the document with the new data.
+    data = {
+        "name": request.name,
+        "description": request.description,
+        "features": request.features,
+        "price": request.price,
+    }
+    doc_ref.update(data)
+    # Return a success message.
+    return Respond(
+        success=True, data=None, message="The User Has Been Updated Succesfully"
+    )
+
+
+@router.delete("delete/{kit_id}", dependencies=[Depends(JWTBearer())])
+def kit_delete(kit_id: str):
+    doc_ref = db.collection("kits").document(kit_id)
+
+    # Check if the document exists.
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="kit not found")
+
+    doc_ref.delete()
+
+    # Return the respond
+    return Respond(
+        success=True, data=None, message="The kit Has Been deleted Successfully"
+    )
 
 
 def processImage(image: UploadFile = File(...)):
@@ -186,3 +227,4 @@ def optimize_image(file, filename):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
