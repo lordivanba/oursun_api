@@ -36,7 +36,11 @@ async def get_kits():
         kits.append(dto_kit)
 
     if not kits:
-        raise HTTPException(status_code=404, detail="Kits not found")
+        return ApiResponseDto(
+            success=False,
+            data=None,
+            message="No se encontraron kits",
+        )
 
     return ApiResponseDto(
         success=True,
@@ -227,4 +231,3 @@ def optimize_image(file, filename):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
