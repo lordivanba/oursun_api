@@ -1,7 +1,8 @@
 from typing import Union
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from router import user
+from router import user, quotations, reviews
+
 
 from router import kits
 
@@ -24,3 +25,5 @@ async def read_root():
 
 app.include_router(kits.router, prefix="/kits", tags=["kits"])
 app.include_router(user.user, prefix="/users", tags=["users"])
+app.include_router(quotations.quotations, prefix="/quotations", tags=["Quotations"])
+app.include_router(reviews.reviews, prefix="/reviews", tags=["reviews"])

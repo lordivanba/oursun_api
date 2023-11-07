@@ -124,9 +124,9 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
             raise HTTPException(
                 status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
             )
+    image_urls = doc.get("images")
 
     try:
-        image_urls = []
         for image_file in images:
             image_url = processImage(image_file)
             image_urls.append(image_url)
@@ -165,7 +165,7 @@ def update_kit(user_id: str, request: KitUpdateRequestDto):
     )
 
 
-@router.delete("delete/{kit_id}", dependencies=[Depends(JWTBearer())])
+@router.delete("/delete/{kit_id}", dependencies=[Depends(JWTBearer())])
 def kit_delete(kit_id: str):
     doc_ref = db.collection("kits").document(kit_id)
 
@@ -180,6 +180,29 @@ def kit_delete(kit_id: str):
     return Respond(
         success=True, data=None, message="The kit Has Been deleted Successfully"
     )
+
+
+@router.delete("/delete_image/{kit_id}/{image_url}")
+def kit_delete_image(kit_id: str, image_url: str):
+    doc_ref = db.collection("kits").document(kit_id)
+
+    # Check if the document exists
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Kit not found")
+
+    # Save images_urls in a variable called images
+    images = doc.get("images")
+
+    for i, image in enumerate(images):
+        if image == image_url:
+            break
+    else:
+        raise HTTPException(
+            status_code=400, detail="The image URL does not match the image"
+        )
+
+    return Respond(success=True, data=None, message="Nice test")
 
 
 def processImage(image: UploadFile = File(...)):
