@@ -10,6 +10,7 @@ from typing import List
 from firebase_admin import firestore, storage
 from PIL import Image
 from dto.kitCreateRequestDto import KitCreateRequestDto
+from dto.kitDeleteImageDto import KitDeleteImageDto
 from dto.kitUpdateRequestDto import KitUpdateRequestDto
 from dto.respond import Respond
 
@@ -182,9 +183,9 @@ def kit_delete(kit_id: str):
     )
 
 
-@router.delete("/delete_image/{kit_id}/{image_url}")
-def kit_delete_image(kit_id: str, image_url: str):
-    doc_ref = db.collection("kits").document(kit_id)
+@router.delete("/delete_image")
+def kit_delete_image(data: KitDeleteImageDto):  
+    doc_ref = db.collection("kits").document(data.id)
 
     # Check if the document exists
     doc = doc_ref.get()
@@ -195,7 +196,7 @@ def kit_delete_image(kit_id: str, image_url: str):
     images = doc.get("images")
 
     for i, image in enumerate(images):
-        if image == image_url:
+        if image == data.image_url:
             break
     else:
         raise HTTPException(
