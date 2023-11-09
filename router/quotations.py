@@ -17,6 +17,7 @@ quotations = APIRouter()
 db = firestore.client()
 
 
+
 @quotations.get("/test")
 def test():
     return Respond(success=True, data=None, message="Nice test")
@@ -47,21 +48,16 @@ def create_quotation(data: QuotationsCreateRequestDto):
 
 @quotations.get("/get_all", dependencies=[Depends(JWTBearer())])
 def get_quotations():
-    try:
-        docs = db.collection("quotations").get()
-        quotations = []
-        for doc in docs:
-            quotation = doc.to_dict()
-            quotation["id"] = doc.id
-            dto_quotation = Quotation(**quotation)
-            quotations.append(dto_quotation)
-
-        if not quotations:
-            return Respond(success=False, data=None, message="Quotations not found")
-
-        return ApiResponseDto(success=True, data=quotations, message="message")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    docs = db.collection("quotations").get()
+    quotations = []
+    for doc in docs:
+        quotation = doc.to_dict()
+        quotation["id"] = doc.id
+        dto_quotation = Quotation(**quotation)
+        quotations.append(dto_quotation)
+    if not quotations:
+        return Respond(success=False, data=None, message="Quotations not found")
+    return ApiResponseDto(success=True, data=quotations, message="message")
 
 
 @quotations.get("/get_by_id/{quotation_id}", dependencies=[Depends(JWTBearer())])

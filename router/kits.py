@@ -162,7 +162,7 @@ def update_kit(user_id: str, request: KitUpdateRequestDto):
     doc_ref.update(data)
     # Return a success message.
     return Respond(
-        success=True, data=None, message="The kit Has Been Updated Succesfully"
+        success=True, data=None, message="The kit has been successfully updated"
     )
 
 
@@ -206,7 +206,7 @@ def kit_delete_image(data: KitDeleteImageDto):
             break
     else:
         raise HTTPException(
-            status_code=422, detail="The image URL does not match the image"
+            status_code=422, detail="The image URL does not match the images"
         )
     
     #Delete the selected image
