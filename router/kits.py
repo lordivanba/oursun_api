@@ -40,7 +40,7 @@ async def get_kits():
         return ApiResponseDto(
             success=False,
             data=None,
-            message="No se encontraron kits",
+            message="kits not found",
         )
 
     return ApiResponseDto(
@@ -54,7 +54,7 @@ async def get_kits():
 async def get_kits_by_Id(kit_id: str):
     doc_ref = db.collection("kits").document(kit_id)
     doc = doc_ref.get()
-    if not doc:
+    if not doc.exists:
         raise HTTPException(status_code=404, detail="Kit not found")
     kit = doc.to_dict()
     kit["id"] = doc.id
@@ -183,8 +183,9 @@ def kit_delete(kit_id: str):
     )
 
 
-@router.delete("/delete_image")
+@router.delete("/delete_image", dependencies=[Depends(JWTBearer())])
 def kit_delete_image(data: KitDeleteImageDto):  
+    #Searching for the specific kit with the id
     doc_ref = db.collection("kits").document(data.id)
 
     # Check if the document exists
@@ -194,16 +195,27 @@ def kit_delete_image(data: KitDeleteImageDto):
 
     # Save images_urls in a variable called images
     images = doc.get("images")
-
+    
+    #Validate if the kit has images
+    if not images:
+        raise HTTPException(status_code=422, detail="No images found for the kit")
+    
+    #Search the specific image in the array
     for i, image in enumerate(images):
         if image == data.image_url:
             break
     else:
         raise HTTPException(
-            status_code=400, detail="The image URL does not match the image"
+            status_code=422, detail="The image URL does not match the image"
         )
+    
+    #Delete the selected image
+    del images[i]
+    
+    #Update firebase images
+    doc_ref.update({"images": images })
 
-    return Respond(success=True, data=None, message="Nice test")
+    return Respond(success=True, data=None, message="The image has been deleted succesfully")
 
 
 def processImage(image: UploadFile = File(...)):
