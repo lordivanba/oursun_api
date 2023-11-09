@@ -4,6 +4,7 @@ import firebase_admin
 
 from firebase_admin import firestore
 from fastapi import APIRouter, Depends, File, HTTPException
+from auth.jwt_bearer import JWTBearer
 from dto.api_response_dto import ApiResponseDto
 
 from dto.respond import Respond
@@ -19,7 +20,7 @@ def test():
     return Respond(success=True, data=None, message="Nice test")
 
 
-@reviews.post("/upload")
+@reviews.post("/upload",  dependencies=[Depends(JWTBearer())])
 def create_review(data: ReviewCreateRequestDto):
     review = Review(
         id=str(uuid.uuid4()),
@@ -35,7 +36,7 @@ def create_review(data: ReviewCreateRequestDto):
     return Respond(success=True, data=None, message="Review Created Succesfully")
 
 
-@reviews.get("/get_all")
+@reviews.get("/get_all", dependencies=[Depends(JWTBearer())])
 def get_reviews():
     docs = db.collection("reviews").get()
     reviews = []
@@ -49,7 +50,7 @@ def get_reviews():
     return ApiResponseDto(success=True, data=reviews, message="message")
 
 
-@reviews.get("/get_by_id/{review_id}")
+@reviews.get("/get_by_id/{review_id}", dependencies=[Depends(JWTBearer())])
 def get_by_id(review_id: str):
     doc_ref = db.collection("reviews").document(review_id)
     doc = doc_ref.get()
@@ -63,7 +64,7 @@ def get_by_id(review_id: str):
     return Respond(success=True, data=value, message="message")
 
 
-@reviews.put("/update/{review_id}")
+@reviews.put("/update/{review_id}", dependencies=[Depends(JWTBearer())])
 def update_review(review_id: str, data: ReviewCreateRequestDto):
     doc_ref = db.collection("reviews").document(review_id)
     doc = doc_ref.get()
@@ -84,7 +85,7 @@ def update_review(review_id: str, data: ReviewCreateRequestDto):
     
 
 
-@reviews.delete("/delete/{review_id}")
+@reviews.delete("/delete/{review_id}", dependencies=[Depends(JWTBearer())])
 def kit_delete(review_id: str):
     doc_ref = db.collection("reviews").document(review_id)
 
