@@ -82,17 +82,19 @@ async def create_user(
 def user_login(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
         data = get_user_byUsername(user.username)
-
-        return Respond(
-            success=True,
-            data=signJWT(
-                data.id, data.username, data.isAuthorized, data.origin, data.type
-            ),
-            message="The User has been Loged Succesfully",
-        )
+        
+        if data.isAuthorized == True:
+            return Respond(
+                success=True,
+                data=signJWT(
+                    data.id, data.username, data.isAuthorized, data.origin, data.type
+                ),
+                message="The User has been Loged Succesfully",
+            )
+        else:
+            raise HTTPException(status_code=404, detail="User is not authorized")
     else:
         raise HTTPException(status_code=404, detail="User not Found")
-
 
 def get_user_byUsername(username: str):
     docs = db.collection("users").where("username", "==", username).get()

@@ -33,12 +33,23 @@ def create_quotation(data: QuotationsCreateRequestDto):
     user_ref = db.collection("users").where("id", "==", data.user_id).get()
     if not user_ref:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Fetch username from "users" table
+    username_doc = db.collection("users").document(data.user_id).get()
+    username_user = username_doc.get("username")
+    
+    # Fetch name from "kits" table
+    kit_doc = db.collection("kits").document(data.kit_id).get()
+    kit_name = kit_doc.get("name")
+    
 
     quotation = Quotation(
         id=str(uuid.uuid4()),
         created_at=str(datetime.datetime.now().strftime("%Y-%m-%d")),
         kit_id=data.kit_id,
+        name_kit= kit_name,
         user_id=data.user_id,
+        username= username_user
     )
 
     response_data = quotation.model_dump()
