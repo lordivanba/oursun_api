@@ -10,17 +10,41 @@ from dto.api_response_dto import ApiResponseDto
 from dto.quotationsCreateRequestDto import QuotationsCreateRequestDto
 
 from dto.respond import Respond
+from dto.responseQuotationsDto import ResponseQuotationsDto
+from models.kit import Kit
 from models.quotation import Quotation
+from models.user import User
 
 
 quotations = APIRouter()
 db = firestore.client()
 
 
-
 @quotations.get("/test")
 def test():
     return Respond(success=True, data=None, message="Nice test")
+
+
+def search_kit(id: str):
+    doc_ref = db.collection("kits").document(id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Kit not found")
+    kit = doc.to_dict()
+    # Convert the kit to a kit object.
+    dto_kit = Kit(**kit)
+    return dto_kit.name, dto_kit.price
+
+
+def search_username(id: str):
+    doc_ref = db.collection("users").document(id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    user = doc.to_dict()
+    # Convert the user to a kit object.
+    dto_user = User(**user)
+    return dto_user.username
 
 
 @quotations.post("/upload", dependencies=[Depends(JWTBearer())])
@@ -33,23 +57,12 @@ def create_quotation(data: QuotationsCreateRequestDto):
     user_ref = db.collection("users").where("id", "==", data.user_id).get()
     if not user_ref:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Fetch username from "users" table
-    username_doc = db.collection("users").document(data.user_id).get()
-    username_user = username_doc.get("username")
-    
-    # Fetch name from "kits" table
-    kit_doc = db.collection("kits").document(data.kit_id).get()
-    kit_name = kit_doc.get("name")
-    
 
     quotation = Quotation(
         id=str(uuid.uuid4()),
         created_at=str(datetime.datetime.now().strftime("%Y-%m-%d")),
         kit_id=data.kit_id,
-        name_kit= kit_name,
         user_id=data.user_id,
-        username= username_user
     )
 
     response_data = quotation.model_dump()
@@ -63,11 +76,25 @@ def get_quotations():
     quotations = []
     for doc in docs:
         quotation = doc.to_dict()
-        quotation["id"] = doc.id
-        dto_quotation = Quotation(**quotation)
+        value_quotation = Quotation(**quotation)
+        kit_name, kit_price = search_kit(value_quotation.kit_id)
+        username = search_username(value_quotation.user_id)
+
+        dto_quotation = ResponseQuotationsDto(
+            id=value_quotation.id,
+            created_at=value_quotation.created_at,
+            kit_id=value_quotation.kit_id,
+            kit_name=kit_name,
+            kit_price=kit_price,
+            user_id=value_quotation.user_id,
+            username=username,
+        )
+
         quotations.append(dto_quotation)
+
     if not quotations:
         return Respond(success=False, data=None, message="Quotations not found")
+
     return ApiResponseDto(success=True, data=quotations, message="message")
 
 
@@ -79,6 +106,18 @@ def get_by_id(quotation_id: str):
         raise HTTPException(status_code=404, detail="Quotation not found")
     quotation = doc.to_dict()
 
-    dto_quotation = Quotation(**quotation)
+    value_quotation = Quotation(**quotation)
+    kit_name, kit_price = search_kit(value_quotation.kit_id)
+    username = search_username(value_quotation.user_id)
+
+    dto_quotation = ResponseQuotationsDto(
+        id=value_quotation.id,
+        created_at=value_quotation.created_at,
+        kit_id=value_quotation.kit_id,
+        kit_name=kit_name,
+        kit_price=kit_price,
+        user_id=value_quotation.user_id,
+        username=username,
+    )
     value = dto_quotation.model_dump()
     return Respond(success=True, data=value, message="message")
