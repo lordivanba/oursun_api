@@ -126,6 +126,9 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
                 status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
             )
     image_urls = doc.get("images")
+    
+    if image_urls == None:
+        image_urls = []
 
     try:
         for image_file in images:
