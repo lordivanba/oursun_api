@@ -29,7 +29,7 @@ def search_kit(id: str):
     doc_ref = db.collection("kits").document(id)
     doc = doc_ref.get()
     if not doc.exists:
-        raise HTTPException(status_code=404, detail="Kit not found")
+        return "", 0
     kit = doc.to_dict()
     # Convert the kit to a kit object.
     dto_kit = Kit(**kit)
@@ -40,7 +40,7 @@ def search_username(id: str):
     doc_ref = db.collection("users").document(id)
     doc = doc_ref.get()
     if not doc.exists:
-        raise HTTPException(status_code=404, detail="User not found")
+        return ""
     user = doc.to_dict()
     # Convert the user to a kit object.
     dto_user = User(**user)
@@ -89,8 +89,12 @@ def get_quotations():
             user_id=value_quotation.user_id,
             username=username,
         )
-
-        quotations.append(dto_quotation)
+        if dto_quotation.kit_name == "" and dto_quotation.kit_price == 0 or dto_quotation.username == "":
+            pass
+        else:
+            quotations.append(dto_quotation)
+        
+        
 
     if not quotations:
         return Respond(success=False, data=None, message="Quotations not found")

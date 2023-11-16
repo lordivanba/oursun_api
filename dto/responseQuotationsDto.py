@@ -7,7 +7,7 @@ class ResponseQuotationsDto(BaseModel):
     id: str
     created_at: str
     kit_id: str
-    kit_name: str
-    kit_price: float
+    kit_name: Optional[str]
+    kit_price: Optional[float]
     user_id: str
-    username: str
+    username: Optional[str]

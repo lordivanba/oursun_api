@@ -69,30 +69,36 @@ async def create_user(
         # RespondUser(success=True, data=[], message="")
         return Respond(
             success=True,
-            data=signJWT(
-                user.id, user.username, user.isAuthorized, user.origin, user.type
-            ),
+            data={"id":user.id},
             message="The user has been created successfully",
         )
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @user.post("/login")
 def user_login(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
         data = get_user_byUsername(user.username)
-        
-        if data.isAuthorized == True:
-            return Respond(
-                success=True,
-                data=signJWT(
-                    data.id, data.username, data.isAuthorized, data.origin, data.type
-                ),
+        if data.type == 0:
+            if data.isAuthorized == True:
+                return Respond(
+                    success=True,
+                    data=signJWT(
+                        data.id, data.username, data.isAuthorized, data.origin, data.type
+                    ),
                 message="The User has been Loged Succesfully",
-            )
+                )
+            else:
+                raise HTTPException(status_code=404, detail="Admin is not authorized")
         else:
-            raise HTTPException(status_code=404, detail="User is not authorized")
+            return Respond(
+                    success=True,
+                    data=signJWT(
+                        data.id, data.username, data.isAuthorized, data.origin, data.type
+                    ),
+                message="The User has been Loged Succesfully",
+                )
     else:
         raise HTTPException(status_code=404, detail="User not Found")
 
