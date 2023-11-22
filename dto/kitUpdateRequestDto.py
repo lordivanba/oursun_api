@@ -7,3 +7,4 @@ class KitUpdateRequestDto(BaseModel):
     description: str
     features: str
     price: float
+    capacity: float

@@ -99,6 +99,7 @@ async def upload_kit(data: KitCreateRequestDto):
         description=data.description,
         features=data.features,
         price=data.price,
+        capacity=data.capacity,
         images=None,
     )
     # Guarda el objeto "kit" en Firestore, si es necesario
@@ -126,7 +127,7 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
                 status_code=422, detail="Only JPG, JPEG, and PNG files are allowed."
             )
     image_urls = doc.get("images")
-    
+
     if image_urls == None:
         image_urls = []
 
@@ -161,6 +162,7 @@ def update_kit(user_id: str, request: KitUpdateRequestDto):
         "description": request.description,
         "features": request.features,
         "price": request.price,
+        "capacity": request.capacity,
     }
     doc_ref.update(data)
     # Return a success message.
@@ -187,8 +189,8 @@ def kit_delete(kit_id: str):
 
 
 @router.delete("/delete_image", dependencies=[Depends(JWTBearer())])
-def kit_delete_image(data: KitDeleteImageDto):  
-    #Searching for the specific kit with the id
+def kit_delete_image(data: KitDeleteImageDto):
+    # Searching for the specific kit with the id
     doc_ref = db.collection("kits").document(data.id)
 
     # Check if the document exists
@@ -198,12 +200,12 @@ def kit_delete_image(data: KitDeleteImageDto):
 
     # Save images_urls in a variable called images
     images = doc.get("images")
-    
-    #Validate if the kit has images
+
+    # Validate if the kit has images
     if not images:
         raise HTTPException(status_code=422, detail="No images found for the kit")
-    
-    #Search the specific image in the array
+
+    # Search the specific image in the array
     for i, image in enumerate(images):
         if image == data.image_url:
             break
@@ -211,14 +213,16 @@ def kit_delete_image(data: KitDeleteImageDto):
         raise HTTPException(
             status_code=422, detail="The image URL does not match the images"
         )
-    
-    #Delete the selected image
-    del images[i]
-    
-    #Update firebase images
-    doc_ref.update({"images": images })
 
-    return Respond(success=True, data=None, message="The image has been deleted succesfully")
+    # Delete the selected image
+    del images[i]
+
+    # Update firebase images
+    doc_ref.update({"images": images})
+
+    return Respond(
+        success=True, data=None, message="The image has been deleted succesfully"
+    )
 
 
 def processImage(image: UploadFile = File(...)):
@@ -270,3 +274,28 @@ def optimize_image(file, filename):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@router.get("/kits_available/{consumption}", dependencies=[Depends(JWTBearer())])
+def get_kits_available(consumption: float):
+    collection = db.collection("kits")
+    docs = collection.where("capacity", ">=", consumption).get()
+    kits = []
+
+    for doc in docs:
+        kit = doc.to_dict()
+        dto_kit = Kit(**kit)
+        kits.append(dto_kit)
+
+    if not kits:
+        return ApiResponseDto(
+            success=False,
+            data=None,
+            message="kits not found",
+        )
+
+    return ApiResponseDto(
+        success=True,
+        data=kits,
+        message="message",
+    )

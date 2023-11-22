@@ -8,3 +8,4 @@ class KitCreateRequestDto(BaseModel):
     description: str
     features: str
     price: float
+    capacity: float

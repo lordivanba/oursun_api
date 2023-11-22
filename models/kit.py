@@ -9,4 +9,5 @@ class Kit(BaseModel):
     price: float
     description: str
     features: str
+    capacity: float
     images: Optional[list]
