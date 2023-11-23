@@ -8,3 +8,5 @@ class Quotation(BaseModel):
     created_at: str
     kit_id: str
     user_id: str
+    latitude: float
+    longitude: float

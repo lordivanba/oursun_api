@@ -88,13 +88,17 @@ def get_quotations():
             kit_price=kit_price,
             user_id=value_quotation.user_id,
             username=username,
+            latitude=value_quotation.latitude,
+            longitude=value_quotation.longitude
         )
-        if dto_quotation.kit_name == "" and dto_quotation.kit_price == 0 or dto_quotation.username == "":
+        if (
+            dto_quotation.kit_name == ""
+            and dto_quotation.kit_price == 0
+            or dto_quotation.username == ""
+        ):
             pass
         else:
             quotations.append(dto_quotation)
-        
-        
 
     if not quotations:
         return Respond(success=False, data=None, message="Quotations not found")
@@ -122,6 +126,8 @@ def get_by_id(quotation_id: str):
         kit_price=kit_price,
         user_id=value_quotation.user_id,
         username=username,
+        latitude=value_quotation.latitude,
+        longitude=value_quotation.longitude,
     )
     value = dto_quotation.model_dump()
     return Respond(success=True, data=value, message="message")

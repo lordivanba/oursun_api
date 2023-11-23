@@ -11,3 +11,5 @@ class ResponseQuotationsDto(BaseModel):
     kit_price: Optional[float]
     user_id: str
     username: Optional[str]
+    latitude: float
+    longitude: float
