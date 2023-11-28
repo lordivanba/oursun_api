@@ -63,11 +63,17 @@ def create_quotation(data: QuotationsCreateRequestDto):
         created_at=str(datetime.datetime.now().strftime("%Y-%m-%d")),
         kit_id=data.kit_id,
         user_id=data.user_id,
+        latitude=data.latitude,
+        longitude=data.longitude,
     )
 
     response_data = quotation.model_dump()
     doc_ref = db.collection("quotations").document(quotation.id).set(response_data)
-    return Respond(success=True, data=None, message="Quotation Created Succesfully ")
+    return Respond(
+        success=True,
+        data=None,
+        message="Quotation Created Succesfully",
+    )
 
 
 @quotations.get("/get_all", dependencies=[Depends(JWTBearer())])
@@ -89,7 +95,7 @@ def get_quotations():
             user_id=value_quotation.user_id,
             username=username,
             latitude=value_quotation.latitude,
-            longitude=value_quotation.longitude
+            longitude=value_quotation.longitude,
         )
         if (
             dto_quotation.kit_name == ""
