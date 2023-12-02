@@ -17,14 +17,36 @@ from dto.respond import Respond
 from models.kit import Kit
 
 
-router = APIRouter()
+kits = APIRouter()
 
 # Initialize Firebase Storage
 storage_client = storage.bucket("our-sun-30a0c.appspot.com")
 db = firestore.client()
 
 
-@router.get("/get_kits", dependencies=[Depends(JWTBearer())])
+@kits.post("/create", dependencies=[Depends(JWTBearer())])
+async def create_kit(data: KitCreateRequestDto):
+    kit = Kit(
+        id=str(uuid.uuid4()),
+        name=data.name,
+        description=data.description,
+        features=data.features,
+        price=data.price,
+        capacity=data.capacity,
+        images=None,
+    )
+    # Guarda el objeto "kit" en Firestore, si es necesario
+    response_data = kit.model_dump()
+    doc_ref = db.collection("kits").document(kit.id).set(response_data)
+
+    return Respond(
+        success=True,
+        data={"id": kit.id},
+        message="Kit created successfully.",
+    )
+
+
+@kits.get("", dependencies=[Depends(JWTBearer())])
 async def get_kits():
     docs = db.collection("kits").get()
     kits = []
@@ -50,7 +72,7 @@ async def get_kits():
     )
 
 
-@router.get("/get_kit_By_Id/{kit_id}", dependencies=[Depends(JWTBearer())])
+@kits.get("/{kit_id}", dependencies=[Depends(JWTBearer())])
 async def get_kits_by_Id(kit_id: str):
     doc_ref = db.collection("kits").document(kit_id)
     doc = doc_ref.get()
@@ -69,7 +91,7 @@ async def get_kits_by_Id(kit_id: str):
     )
 
 
-@router.get("/get_first_image_url", dependencies=[Depends(JWTBearer())])
+@kits.get("/image", dependencies=[Depends(JWTBearer())])
 async def get_first_image_url():
     # List all objects in the root
 
@@ -91,29 +113,32 @@ async def get_first_image_url():
         return {"error": "No images found in Firebase Storage"}
 
 
-@router.post("/upload", dependencies=[Depends(JWTBearer())])
-async def upload_kit(data: KitCreateRequestDto):
-    kit = Kit(
-        id=str(uuid.uuid4()),
-        name=data.name,
-        description=data.description,
-        features=data.features,
-        price=data.price,
-        capacity=data.capacity,
-        images=None,
-    )
-    # Guarda el objeto "kit" en Firestore, si es necesario
-    response_data = kit.model_dump()
-    doc_ref = db.collection("kits").document(kit.id).set(response_data)
+@kits.get("/{consumption}", dependencies=[Depends(JWTBearer())])
+def get_kits_available(consumption: float):
+    collection = db.collection("kits")
+    docs = collection.where("capacity", ">=", consumption).get()
+    kits = []
 
-    return Respond(
+    for doc in docs:
+        kit = doc.to_dict()
+        dto_kit = Kit(**kit)
+        kits.append(dto_kit)
+
+    if not kits:
+        return ApiResponseDto(
+            success=False,
+            data=None,
+            message="kits not found",
+        )
+
+    return ApiResponseDto(
         success=True,
-        data={"id": kit.id},
-        message="Kit created successfully.",
+        data=kits,
+        message="message",
     )
 
 
-@router.put("/upload_Images/{user_id}", dependencies=[Depends(JWTBearer())])
+@kits.put("/images/{user_id}", dependencies=[Depends(JWTBearer())])
 async def upload_images(user_id, images: List[UploadFile] = File(...)):
     doc_ref = db.collection("kits").document(user_id)
 
@@ -147,9 +172,9 @@ async def upload_images(user_id, images: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/update_kit/{kit_id}", dependencies=[Depends(JWTBearer())])
-def update_kit(user_id: str, request: KitUpdateRequestDto):
-    doc_ref = db.collection("kits").document(user_id)
+@kits.put("/{kit_id}", dependencies=[Depends(JWTBearer())])
+def update_kit(kit_id: str, request: KitUpdateRequestDto):
+    doc_ref = db.collection("kits").document(kit_id)
 
     # Check if the document exists.
     doc = doc_ref.get()
@@ -171,7 +196,7 @@ def update_kit(user_id: str, request: KitUpdateRequestDto):
     )
 
 
-@router.delete("/delete/{kit_id}", dependencies=[Depends(JWTBearer())])
+@kits.delete("/{kit_id}", dependencies=[Depends(JWTBearer())])
 def kit_delete(kit_id: str):
     doc_ref = db.collection("kits").document(kit_id)
 
@@ -188,7 +213,7 @@ def kit_delete(kit_id: str):
     )
 
 
-@router.delete("/delete_image", dependencies=[Depends(JWTBearer())])
+@kits.delete("/images", dependencies=[Depends(JWTBearer())])
 def kit_delete_image(data: KitDeleteImageDto):
     # Searching for the specific kit with the id
     doc_ref = db.collection("kits").document(data.id)
@@ -274,28 +299,3 @@ def optimize_image(file, filename):
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-@router.get("/kits_available/{consumption}", dependencies=[Depends(JWTBearer())])
-def get_kits_available(consumption: float):
-    collection = db.collection("kits")
-    docs = collection.where("capacity", ">=", consumption).get()
-    kits = []
-
-    for doc in docs:
-        kit = doc.to_dict()
-        dto_kit = Kit(**kit)
-        kits.append(dto_kit)
-
-    if not kits:
-        return ApiResponseDto(
-            success=False,
-            data=None,
-            message="kits not found",
-        )
-
-    return ApiResponseDto(
-        success=True,
-        data=kits,
-        message="message",
-    )

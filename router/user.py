@@ -42,7 +42,7 @@ def get_db():
 # Método de obtención de Token mediante JWT
 
 
-@user.post("/signup")
+@user.post("/create")
 async def create_user(
     request: RequestUserDto,
     db: firestore.Client = Depends(get_db),
@@ -55,7 +55,6 @@ async def create_user(
         raise HTTPException(status_code=409, detail="Username already exists")
 
     user = User(
-        
         id=str(uuid.uuid4()),
         isAuthorized=False,
         origin=request.origin,
@@ -69,7 +68,7 @@ async def create_user(
         # RespondUser(success=True, data=[], message="")
         return Respond(
             success=True,
-            data={"id":user.id},
+            data={"id": user.id},
             message="The user has been created successfully",
         )
     except Exception as e:
@@ -77,7 +76,7 @@ async def create_user(
 
 
 @user.post("/login")
-def user_login(user: UserLoginSchema = Body(default=None)):
+def authenticate_user(user: UserLoginSchema = Body(default=None)):
     if check_user(user):
         data = get_user_byUsername(user.username)
         if data.type == 0:
@@ -85,22 +84,27 @@ def user_login(user: UserLoginSchema = Body(default=None)):
                 return Respond(
                     success=True,
                     data=signJWT(
-                        data.id, data.username, data.isAuthorized, data.origin, data.type
+                        data.id,
+                        data.username,
+                        data.isAuthorized,
+                        data.origin,
+                        data.type,
                     ),
-                message="The User has been Loged Succesfully",
+                    message="The User has been Loged Succesfully",
                 )
             else:
                 raise HTTPException(status_code=404, detail="Admin is not authorized")
         else:
             return Respond(
-                    success=True,
-                    data=signJWT(
-                        data.id, data.username, data.isAuthorized, data.origin, data.type
-                    ),
+                success=True,
+                data=signJWT(
+                    data.id, data.username, data.isAuthorized, data.origin, data.type
+                ),
                 message="The User has been Loged Succesfully",
-                )
+            )
     else:
         raise HTTPException(status_code=404, detail="User not Found")
+
 
 def get_user_byUsername(username: str):
     docs = db.collection("users").where("username", "==", username).get()
@@ -151,8 +155,8 @@ def check_user(data: UserLoginSchema):
 
 
 # Metodos Get User
-@user.get("/get_users", dependencies=[Depends(JWTBearer())])
-def get_user(db: firestore.Client = Depends(get_db)):
+@user.get("", dependencies=[Depends(JWTBearer())])
+def get_users(db: firestore.Client = Depends(get_db)):
     docs = db.collection("users").get()
 
     users = []
@@ -171,7 +175,7 @@ def get_user(db: firestore.Client = Depends(get_db)):
     return ApiResponseDto(success=True, data=users, message="")
 
 
-@user.get("/get_byId/{user_id}", dependencies=[Depends(JWTBearer())])
+@user.get("/{user_id}", dependencies=[Depends(JWTBearer())])
 async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
     users_ref = db.collection("users").document(user_id)
 
@@ -204,7 +208,7 @@ async def get_by_Id(user_id: str, db: firestore.Client = Depends(get_db)):
 
 
 @user.put(
-    "/update_authorized/{user_id}/{isAuthorized}", dependencies=[Depends(JWTBearer())]
+    "/{user_id}/{isAuthorized}", dependencies=[Depends(JWTBearer())]
 )
 async def update_user_Is_Authorized(
     user_id: str, isAuthorized: bool, db: firestore.Client = Depends(get_db)
@@ -230,7 +234,7 @@ async def update_user_Is_Authorized(
 # Metodos Delete User
 
 
-@user.delete("/delete/{user_id}", dependencies=[Depends(JWTBearer())])
+@user.delete("/{user_id}", dependencies=[Depends(JWTBearer())])
 async def delete_user(user_id: str, db: firestore.Client = Depends(get_db)):
     doc_ref = db.collection("users").document(user_id)
 

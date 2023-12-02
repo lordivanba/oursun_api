@@ -23,7 +23,7 @@ async def read_root():
     return {"message": "Welcome to oursun api"}
 
 
-app.include_router(kits.router, prefix="/kits", tags=["kits"])
 app.include_router(user.user, prefix="/users", tags=["users"])
+app.include_router(kits.kits, prefix="/kits", tags=["kits"])
 app.include_router(quotations.quotations, prefix="/quotations", tags=["Quotations"])
 app.include_router(reviews.reviews, prefix="/reviews", tags=["reviews"])

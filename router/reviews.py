@@ -20,7 +20,7 @@ def test():
     return Respond(success=True, data=None, message="Nice test")
 
 
-@reviews.post("/upload",  dependencies=[Depends(JWTBearer())])
+@reviews.post("/create",  dependencies=[Depends(JWTBearer())])
 def create_review(data: ReviewCreateRequestDto):
     review = Review(
         id=str(uuid.uuid4()),
@@ -36,7 +36,7 @@ def create_review(data: ReviewCreateRequestDto):
     return Respond(success=True, data=None, message="Review Created Succesfully")
 
 
-@reviews.get("/get_all", dependencies=[Depends(JWTBearer())])
+@reviews.get("", dependencies=[Depends(JWTBearer())])
 def get_reviews():
     docs = db.collection("reviews").get()
     reviews = []
@@ -50,7 +50,7 @@ def get_reviews():
     return ApiResponseDto(success=True, data=reviews, message="message")
 
 
-@reviews.get("/get_by_id/{review_id}", dependencies=[Depends(JWTBearer())])
+@reviews.get("/{review_id}", dependencies=[Depends(JWTBearer())])
 def get_by_id(review_id: str):
     doc_ref = db.collection("reviews").document(review_id)
     doc = doc_ref.get()
@@ -64,7 +64,7 @@ def get_by_id(review_id: str):
     return Respond(success=True, data=value, message="message")
 
 
-@reviews.put("/update/{review_id}", dependencies=[Depends(JWTBearer())])
+@reviews.put("/{review_id}", dependencies=[Depends(JWTBearer())])
 def update_review(review_id: str, data: ReviewCreateRequestDto):
     doc_ref = db.collection("reviews").document(review_id)
     doc = doc_ref.get()
@@ -85,7 +85,7 @@ def update_review(review_id: str, data: ReviewCreateRequestDto):
     
 
 
-@reviews.delete("/delete/{review_id}", dependencies=[Depends(JWTBearer())])
+@reviews.delete("/{review_id}", dependencies=[Depends(JWTBearer())])
 def kit_delete(review_id: str):
     doc_ref = db.collection("reviews").document(review_id)
 

@@ -47,7 +47,7 @@ def search_username(id: str):
     return dto_user.username
 
 
-@quotations.post("/upload", dependencies=[Depends(JWTBearer())])
+@quotations.post("/create", dependencies=[Depends(JWTBearer())])
 def create_quotation(data: QuotationsCreateRequestDto):
     # Validate if kit_id Exists
     kit_ref = db.collection("kits").where("id", "==", data.kit_id).get()
@@ -76,7 +76,7 @@ def create_quotation(data: QuotationsCreateRequestDto):
     )
 
 
-@quotations.get("/get_all", dependencies=[Depends(JWTBearer())])
+@quotations.get("", dependencies=[Depends(JWTBearer())])
 def get_quotations():
     docs = db.collection("quotations").get()
     quotations = []
@@ -112,7 +112,7 @@ def get_quotations():
     return ApiResponseDto(success=True, data=quotations, message="message")
 
 
-@quotations.get("/get_by_id/{quotation_id}", dependencies=[Depends(JWTBearer())])
+@quotations.get("/{quotation_id}", dependencies=[Depends(JWTBearer())])
 def get_by_id(quotation_id: str):
     doc_ref = db.collection("quotations").document(quotation_id)
     doc = doc_ref.get()
